@@ -1,0 +1,386 @@
+#!/bin/bash
+clear
+
+# Archivo de log global para registrar actividades
+LOGFILE="/var/log/sysadmin_backup.log"
+
+# Función: Copia de seguridad de /etc y /home 
+backup_configs() {
+    echo "Realizando copia de seguridad de /etc y /home..."
+    backup_file="/var/backups/sysadmin_backup_$(date +%Y%m%d_%H%M%S).tar.gz"
+    sudo mkdir -p /var/backups
+    sudo tar -czf "$backup_file" /etc /home
+    if [ $? -eq 0 ]; then
+        echo "Copia de seguridad completada en: $backup_file"
+        echo "$(date): Backup realizado en $backup_file" | sudo tee -a "$LOGFILE" >/dev/null
+    else
+        echo "Error al realizar la copia de seguridad."
+        echo "$(date): ERROR: Falló el backup en $backup_file" | sudo tee -a "$LOGFILE" >/dev/null
+    fi
+}
+
+# Función: Monitorear rendimiento del sistema
+monitor_performance() {
+    echo "Mostrando información del sistema:"
+    echo "Uso de disco:"
+    df -h
+    echo ""
+    echo "Carga y tiempo de actividad:"
+    uptime
+    echo "$(date): Información de rendimiento mostrada." | sudo tee -a "$LOGFILE" >/dev/null
+}
+
+# Función: Configurar cortafuegos (ufw)
+configure_firewall() {
+    echo "Gestión del cortafuegos:"
+    echo "1) Habilitar cortafuegos"
+    echo "2) Deshabilitar cortafuegos"
+    echo "3) Mostrar estado de cortafuegos"
+    read -p "Seleccione una opción: " fw_option
+    case $fw_option in
+        1)
+            sudo ufw enable
+            
+            echo "$(date): Cortafuegos habilitado." | sudo tee -a "$LOGFILE" >/dev/null
+            ;;
+        2)
+            sudo ufw disable
+            
+            echo "$(date): Cortafuegos deshabilitado." | sudo tee -a "$LOGFILE" >/dev/null
+            ;;
+        3)
+            sudo ufw status verbose
+            echo "$(date): Estado del cortafuegos mostrado." | sudo tee -a "$LOGFILE" >/dev/null
+            ;;
+        *)
+            echo "Opción inválida."
+            ;;
+    esac
+}
+
+# Función: Gestionar cuentas de usuario
+manage_user_accounts() {
+    echo "Gestión de cuentas de usuario:"
+    echo "1) Crear un nuevo usuario"
+    echo "2) Eliminar un usuario existente"
+    read -p "Seleccione una opción: " opciones
+    case $opciones in
+        1)
+            read -p "Ingrese el nombre del nuevo usuario: " nuevo_usuario
+            sudo adduser "$nuevo_usuario"
+            if [ $? -eq 0 ]; then
+                echo "Usuario '$nuevo_usuario' creado."
+                echo "$(date): Usuario '$nuevo_usuario' creado." | sudo tee -a "$LOGFILE" >/dev/null
+            else
+                echo "Error al crear el usuario '$nuevo_usuario'."
+                echo "$(date): ERROR: Falló la creación del usuario '$nuevo_usuario'." | sudo tee -a "$LOGFILE" >/dev/null
+            fi
+            ;;
+        2)
+            read -p "Ingrese el nombre del usuario a eliminar: " eliminar_usuario
+            sudo deluser "$eliminar_usuario"
+            if [ $? -eq 0 ]; then
+                echo "Usuario '$eliminar_usuario' eliminado."
+                echo "$(date): Usuario '$eliminar_usuario' eliminado." | sudo tee -a "$LOGFILE" >/dev/null
+            else
+                echo "Error al eliminar el usuario '$eliminar_usuario'."
+                echo "$(date): ERROR: Falló al eliminar el usuario '$eliminar_usuario'." | sudo tee -a "$LOGFILE" >/dev/null
+            fi
+            ;;
+        *)
+            echo "Opción inválida."
+            ;;
+    esac
+}
+
+# Función: Actualizar el sistema
+update_system() {
+    echo "Actualización del sistema"
+    echo "1) Ejecutar 'apt update' seguido de 'apt upgrade'"
+    echo "2) Ejecutar solo 'apt upgrade'"
+    echo "3) Ejecutar solo 'apt update'"
+    read -p "Seleccione una opción: " update_option
+    case $update_option in
+        1)
+            echo "Ejecutando 'apt update' y 'apt upgrade'..."
+            sudo apt update -y && sudo apt upgrade -y
+            if [ $? -eq 0 ]; then
+                echo "Sistema actualizado correctamente."
+                echo "$(date): Sistema actualizado (update & upgrade)." | sudo tee -a "$LOGFILE" >/dev/null
+            else
+                echo "Error en la actualización del sistema."
+                echo "$(date): ERROR: Falló la actualización del sistema (update & upgrade)." | sudo tee -a "$LOGFILE" >/dev/null
+            fi
+            ;;
+        2)
+            echo "Ejecutando solo 'apt upgrade'..."
+            sudo apt upgrade -y
+            if [ $? -eq 0 ]; then
+                echo "Apt upgrade ejecutado correctamente."
+                echo "$(date): Apt upgrade ejecutado." | sudo tee -a "$LOGFILE" >/dev/null
+            else
+                echo "Error al ejecutar apt upgrade."
+                echo "$(date): ERROR: Falló al ejecutar apt upgrade." | sudo tee -a "$LOGFILE" >/dev/null
+            fi
+            ;;
+        3)
+            echo "Ejecutando solo 'apt update'..."
+            sudo apt update -y
+            if [ $? -eq 0 ]; then
+                echo "Apt update ejecutado correctamente."
+                echo "$(date): Apt update ejecutado." | sudo tee -a "$LOGFILE" >/dev/null
+            else
+                echo "Error al ejecutar apt update."
+                echo "$(date): ERROR: Falló al ejecutar apt update." | sudo tee -a "$LOGFILE" >/dev/null
+            fi
+            ;;
+        *)
+            echo "Opción no válida."
+            ;;
+    esac
+}
+
+
+# Función: Instalar software
+install_software() {
+    read -p "Ingrese el nombre del paquete a instalar: " package
+    echo "Instalando $package..."
+    sudo apt install -y "$package"
+    if [ $? -eq 0 ]; then
+        echo "Paquete $package instalado correctamente."
+        echo "$(date): Paquete $package instalado." | sudo tee -a "$LOGFILE" >/dev/null
+    else
+        echo "Error al instalar $package."
+        echo "$(date): ERROR: Falló la instalación de $package." | sudo tee -a "$LOGFILE" >/dev/null
+    fi
+}
+
+# Función: Generar informe del sistema
+generate_system_report() {
+    report_file="/var/backups/system_report_$(date +%Y%m%d_%H%M%S).txt"
+    echo "Generando informe del sistema en $report_file..."
+    sudo mkdir -p /var/backups
+    {
+      echo "Informe del sistema - $(date)"
+      echo "-----------------------------------"
+      echo "Uso de disco:"
+      df -h
+      echo ""
+      echo "Memoria disponible:"
+      free -h
+      echo ""
+      echo "Carga y tiempo de actividad:"
+      uptime
+      echo ""
+      echo "Usuarios conectados:"
+      who
+    } | sudo tee "$report_file" >/dev/null
+    if [ $? -eq 0 ]; then
+        echo "Informe generado correctamente."
+        echo "$(date): Informe generado en $report_file." | sudo tee -a "$LOGFILE" >/dev/null
+    else
+        echo "Error al generar el informe."
+        echo "$(date): ERROR: Falló la generación del informe." | sudo tee -a "$LOGFILE" >/dev/null
+    fi
+}
+
+# Función: Verificar integridad de archivos críticos
+check_file_integrity() {
+    echo "Verificando integridad de archivos críticos..."
+    integrity_file="/var/backups/integrity_$(date +%Y%m%d_%H%M%S).txt"
+    sudo mkdir -p /var/backups
+    {
+      echo "Hash de /etc/passwd:"
+      sha256sum /etc/passwd
+      echo ""
+      echo "Hash de /etc/shadow:"
+      sha256sum /etc/shadow 2>/dev/null || echo "No se pudo acceder a /etc/shadow (se requieren permisos)."
+    } | sudo tee "$integrity_file" >/dev/null
+    if [ $? -eq 0 ]; then
+        echo "Verificación completada. Resultado en: $integrity_file"
+        echo "$(date): Verificación de integridad completada en $integrity_file." | sudo tee -a "$LOGFILE" >/dev/null
+    else
+        echo "Error en la verificación de integridad."
+        echo "$(date): ERROR: Falló la verificación de integridad." | sudo tee -a "$LOGFILE" >/dev/null
+    fi
+}
+
+# Función: Configurar automatización de backup (agregar tarea cron)
+schedule_backup() {
+    echo "==========================================="
+    echo " Gestión de automatización de copias de seguridad"
+    echo "==========================================="
+    echo "1) Configurar una nueva programación de copia de seguridad"
+    echo "2) Listar todas las copias de seguridad programadas"
+    echo "3) Eliminar una programación existente"
+    echo "4) Volver al menú principal"
+    echo "==========================================="
+    read -p "Seleccione una opción [1-4]: " option
+
+    case $option in
+        1)
+            # Pedir hora y minutos
+            read -p "Ingrese la hora en formato 24h (0-23) para ejecutar el backup: " hora
+            read -p "Ingrese los minutos (0-59): " minutos
+
+            # Preguntar el día de la semana
+            read -p "Ingrese el día de la semana (0-6) o * para todos los días: " dia_semana
+
+            # Convertir número a día en texto
+            declare -a dias=("Domingo" "Lunes" "Martes" "Miércoles" "Jueves" "Viernes" "Sábado")
+
+            if [[ "$dia_semana" =~ ^[0-6]$ ]]; then
+                dia_nombre="${dias[$dia_semana]}"
+            elif [[ "$dia_semana" == "*" ]]; then
+                dia_nombre="Todos los días"
+            else
+                echo " Error: Día de la semana inválido."
+                return
+            fi
+
+            echo " Se ha programado la copia de seguridad para el día: $dia_nombre"
+
+            # Obtener la ruta del script actual
+            script_path="$(realpath "$0")"
+
+            # Construir la línea de cron personalizada
+            cron_line="$minutos $hora * * $dia_semana $script_path 1>/dev/null 2>&1"
+
+            # Agregar la nueva tarea sin eliminar las anteriores
+            (crontab -l 2>/dev/null; echo "$cron_line") | crontab -
+
+            if [ $? -eq 0 ]; then
+                echo " Tarea cron añadida para ejecutarse a las $hora:$minutos el $dia_nombre."
+                echo "$(date): Nueva tarea cron añadida para backups a las $hora:$minutos el $dia_nombre." | sudo tee -a "$LOGFILE" >/dev/null
+            else
+                echo " Error al configurar la tarea cron."
+                echo "$(date): ERROR: Falló la configuración de la tarea cron." | sudo tee -a "$LOGFILE" >/dev/null
+            fi
+            ;;
+
+        2)
+            # Mostrar las copias de seguridad programadas
+            echo " Tareas programadas para copias de seguridad:"
+            crontab -l 2>/dev/null | grep "$(realpath "$0")"
+
+            if [ $? -ne 0 ]; then
+                echo " No hay copias de seguridad programadas actualmente."
+            fi
+            ;;
+
+        3)
+            # Eliminar una programación específica
+            echo " Programaciones actuales:"
+            crontab -l 2>/dev/null | grep "$(realpath "$0")" | nl  # Enumerar las tareas
+
+            # Guardamos todas las programaciones en un archivo temporal
+            crontab -l 2>/dev/null | grep "$(realpath "$0")" > /tmp/cron_list.txt
+
+            if [ ! -s /tmp/cron_list.txt ]; then
+                echo " No hay copias de seguridad programadas actualmente."
+                return
+            fi
+
+            read -p "Ingrese el número de la programación que desea eliminar (o 0 para cancelar): " num
+            if [ "$num" -ne 0 ]; then
+                # Borrar la línea específica elegida por el usuario
+                sed -i "${num}d" /tmp/cron_list.txt
+                # Volver a escribir `crontab` sin la tarea eliminada
+                (crontab -l 2>/dev/null | grep -v "$(realpath "$0")"; cat /tmp/cron_list.txt) | crontab -
+                echo " Programación eliminada correctamente."
+            else
+                echo " Operación cancelada."
+            fi
+            ;;
+
+        4)
+            echo "↩️ Volviendo al menú principal..."
+            return
+            ;;
+            
+        *)
+            echo " Opción no válida. Inténtelo de nuevo."
+            ;;
+    esac
+}
+
+
+
+
+# Función: Mostrar el menú de opciones
+show_menu() {
+    echo "========================================="
+    echo " Script para Administradores de Sistemas"
+    echo "========================================="
+    echo "1) Copia de seguridad de /etc y /home"
+    echo ""
+    echo "2) Monitorear rendimiento del sistema"
+    echo ""
+    echo "3) Configurar cortafuegos"
+    echo ""
+    echo "4) Gestionar cuentas de usuario"
+    echo ""
+    echo "5) Actualizar el sistema"
+    echo ""
+    echo "6) Instalar software"
+    echo ""
+    echo "7) Generar informe del sistema"
+    echo ""
+    echo "8) Verificar integridad de archivos críticos"
+    echo ""
+    echo "9) Configurar automatización de backup (cron)"
+    echo ""
+    echo "10) Salir"
+    echo "========================================="
+}
+
+# Función principal: controla el flujo del menú
+main() {
+    while true; do
+        show_menu
+        read -p "Seleccione una opción [1-10]: " option
+        case $option in
+            1)
+                backup_configs
+                ;;
+            2)
+                monitor_performance
+                ;;
+            3)
+                configure_firewall
+                ;;
+            4)
+                manage_user_accounts
+                ;;
+            5)
+                update_system
+                ;;
+            6)
+                install_software
+                ;;
+            7)
+                generate_system_report
+                ;;
+            8)
+                check_file_integrity
+                ;;
+            9)
+                schedule_backup
+                ;;
+            10)
+                echo "Saliendo..."
+                exit 0
+                ;;
+            *)
+                echo "Opción no válida. Intente nuevamente."
+                ;;
+         esac
+        echo ""
+        read -p "Presione Enter para continuar..."
+        clear
+    done
+}
+
+# Ejecución del script
+main
+clear
